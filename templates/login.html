@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Nova • Login</title>
+<style>
+:root {
+  --bg-primary:#0a0a0c;
+  --bg-secondary:#121212;
+  --border:#1e1e24;
+  --accent:#7c3aed;
+  --accent-hover:#6d28d9;
+  --text:#f1f1f3;
+  --muted:#b0b0b8;
+}
+
+body{
+  margin:0;
+  height:100vh;
+  background:var(--bg-primary);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-family:system-ui,Arial;
+  color:var(--text);
+}
+
+.card{
+  background:var(--bg-secondary);
+  padding:3rem 3.5rem;
+  border-radius:18px;
+  border:1px solid var(--border);
+  text-align:center;
+  box-shadow:0 20px 40px rgba(0,0,0,.6);
+  animation:fade .6s ease;
+}
+
+@keyframes fade{
+  from{opacity:0; transform:translateY(20px)}
+  to{opacity:1; transform:translateY(0)}
+}
+
+.logo{
+  font-size:2.2rem;
+  font-weight:800;
+  background:linear-gradient(135deg,var(--accent),#a78bfa);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  margin-bottom:.5rem;
+}
+
+.tag{
+  color:var(--muted);
+  margin-bottom:2.2rem;
+}
+
+.login-btn{
+  display:inline-block;
+  background:linear-gradient(135deg,var(--accent),var(--accent-hover));
+  padding:1rem 2.5rem;
+  border-radius:12px;
+  color:white;
+  font-weight:700;
+  text-decoration:none;
+  transition:.2s;
+  box-shadow:0 6px 16px rgba(124,58,237,.4);
+}
+
+.login-btn:hover{
+  transform:translateY(-2px);
+  box-shadow:0 10px 22px rgba(124,58,237,.6);
+}
+</style>
+</head>
+
+<body>
+<div class="card">
+  <div class="logo">nova</div>
+  <div class="tag">AI learning assistant</div>
+
+  <a class="login-btn" href="/auth/google">
+    Continue with Google
+  </a>
+</div>
+</body>
+</html>

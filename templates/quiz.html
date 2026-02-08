@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova • Topic Quizzes</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+    
+    <!-- Rich text dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark-dimmed.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" integrity="sha384-wcIxkf4k558Ajb8mF3rWItKyU2v0lKRVvY9l3J8v3Y8q6rL2b8fFz3lV2f3zV2f" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js"></script>
+
+    <style>
+        :root {
+            --bg-primary: #0a0a0c;
+            --bg-secondary: #121212;
+            --bg-tertiary: #1a1a1f;
+            --bg-input: #0f0f11;
+            --text-primary: #f1f1f3;
+            --text-secondary: #b0b0b8;
+            --text-muted: #6e6e78;
+            --btn-primary-bg: #7c3aed;
+            --btn-primary-hover: #6d28d9;
+            --btn-primary-fg: #ffffff;
+            --btn-secondary-bg: #1e1e24;
+            --btn-secondary-hover: #2a2a32;
+            --border: #1e1e24;
+            --border-light: #2a2a32;
+            --accent: #c084fc;
+            --success: #34d399;
+            --success-bg: #064e3b;
+            --error: #f87171;
+            --error-bg: #7f1d1d;
+            --warning: #f59e0b;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            padding: 1.25rem 2rem;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            font-size: 1.45rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--btn-primary-bg), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .back-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .back-link:hover { color: var(--text-primary); }
+
+        .container {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 1.5rem;
+            padding: 2rem;
+        }
+
+        .sidebar {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            height: fit-content;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .topic-btn {
+            background: var(--btn-secondary-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            padding: 0.85rem 1.25rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            text-align: left;
+            transition: all 0.2s;
+        }
+
+        .topic-btn:hover {
+            background: var(--btn-secondary-hover);
+            transform: translateY(-2px);
+        }
+
+        .quiz-stats {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .quiz-stats.active { display: block; }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .stat-label { color: var(--text-secondary); font-size: 0.92rem; }
+        .stat-value { font-weight: 700; font-size: 1.15rem; }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--bg-input);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--btn-primary-bg), var(--accent));
+            width: 0%;
+            transition: width 0.4s ease;
+        }
+
+        .score-badge {
+            padding: 0.35rem 0.9rem;
+            border-radius: 12px;
+            font-size: 0.88rem;
+            font-weight: 600;
+        }
+
+        .score-badge.correct { background: var(--success-bg); color: var(--success); }
+        .score-badge.incorrect { background: var(--error-bg); color: var(--error); }
+
+        .main {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            padding: 1rem 0.5rem 1rem 1rem;
+        }
+
+        .message {
+            padding: 1rem 1.25rem;
+            border-radius: 12px;
+            max-width: 85%;
+            line-height: 1.65;
+            font-size: 1.03rem;
+            opacity: 0;
+            transform: translateY(15px);
+            animation: messageAppear 0.45s ease forwards;
+        }
+
+        @keyframes messageAppear {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, var(--btn-primary-bg), var(--btn-primary-hover));
+            color: var(--btn-primary-fg);
+        }
+
+        .message.bot {
+            align-self: flex-start;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .typing {
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        .question-container {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            max-width: 100%;
+            align-self: flex-start;
+            animation: messageAppear 0.5s ease;
+        }
+
+        .question-header {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 1rem;
+            color: var(--accent);
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .question-text {
+            font-size: 1.18rem;
+            font-weight: 600;
+            margin-bottom: 1.75rem;
+            line-height: 1.65;
+        }
+
+        .options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.9rem;
+        }
+
+        .option-btn {
+            background: var(--btn-secondary-bg);
+            border: 2px solid var(--border);
+            color: var(--text-primary);
+            padding: 1.1rem 1.4rem;
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.22s;
+            font-size: 1.03rem;
+            display: flex;
+            align-items: center;
+            gap: 0.9rem;
+            line-height: 1.55;
+        }
+
+        .option-btn:hover:not(:disabled) {
+            background: var(--btn-secondary-hover);
+            border-color: var(--accent);
+            transform: translateX(4px);
+        }
+
+        .option-btn:disabled { cursor: not-allowed; opacity: 0.55; }
+
+        .option-letter {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            background: var(--bg-tertiary);
+            font-weight: 700;
+            font-size: 0.95rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .option-btn.correct {
+            background: var(--success-bg);
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .option-btn.correct .option-letter {
+            background: var(--success);
+            color: white;
+        }
+
+        .option-btn.incorrect {
+            background: var(--error-bg);
+            border-color: var(--error);
+            color: var(--error);
+        }
+
+        .option-btn.incorrect .option-letter {
+            background: var(--error);
+            color: white;
+        }
+
+        .option-btn.selected {
+            border-color: var(--accent);
+            background: rgba(192, 132, 252, 0.12);
+            box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.2);
+        }
+
+        .explanation {
+            background: var(--bg-input);
+            border-left: 4px solid var(--accent);
+            padding: 1.25rem;
+            border-radius: 8px;
+            margin-top: 1.25rem;
+            display: none;
+        }
+
+        .explanation.show {
+            display: block;
+            animation: slideDown 0.35s ease;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .explanation-title {
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .feedback {
+            padding: 0.9rem 1.25rem;
+            border-radius: 10px;
+            margin-top: 1.25rem;
+            font-weight: 600;
+            display: none;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .feedback.show {
+            display: flex;
+            animation: pulse 1.8s ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .feedback.correct { background: var(--success-bg); color: var(--success); border: 1px solid var(--success); }
+        .feedback.incorrect { background: var(--error-bg); color: var(--error); border: 1px solid var(--error); }
+
+        .next-btn {
+            margin-top: 1.25rem;
+            padding: 0.9rem 1.75rem;
+            border-radius: 10px;
+            border: none;
+            background: var(--btn-primary-bg);
+            color: var(--btn-primary-fg);
+            font-weight: 600;
+            cursor: pointer;
+            display: none;
+            font-size: 1rem;
+        }
+
+        .next-btn.show { display: inline-block; }
+        .next-btn:hover { background: var(--btn-primary-hover); }
+
+        .input-row {
+            display: flex;
+            gap: 0.9rem;
+            align-items: center;
+        }
+
+        .topic-input {
+            flex: 1;
+            padding: 0.9rem 1.25rem;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--bg-input);
+            color: var(--text-primary);
+            outline: none;
+            font-size: 1rem;
+        }
+
+        .start-btn {
+            padding: 0.9rem 1.5rem;
+            border-radius: 10px;
+            border: none;
+            background: var(--btn-primary-bg);
+            color: var(--btn-primary-fg);
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .start-btn:hover { background: var(--btn-primary-hover); }
+
+        /* Rich content styling */
+        .message pre, .explanation pre {
+            background: #0d0d12;
+            border: 1px solid #222;
+            border-radius: 10px;
+            padding: 1rem;
+            overflow-x: auto;
+            margin: 1.25rem 0;
+        }
+
+        .message code, .explanation code {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        }
+
+        .katex { font-size: 1.05em !important; }
+        .katex-display { margin: 1.4rem 0; }
+
+        @media (max-width: 900px) {
+            .container { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<header>
+    <div class="logo">nova • Topic Quizzes</div>
+    <a class="back-link" href="/">← Back to chat</a>
+</header>
+
+<div class="container">
+    <aside class="sidebar">
+        <div style="font-weight:600; color: var(--text-secondary);">Pick a topic</div>
+        <button class="topic-btn" data-topic="DBMS">DBMS</button>
+        <button class="topic-btn" data-topic="Python programming">Python programming</button>
+        <button class="topic-btn" data-topic="Operating systems">Operating systems</button>
+        <button class="topic-btn" data-topic="Computer networks">Computer networks</button>
+        <button class="topic-btn" data-topic="Data structures">Data structures</button>
+        <button class="topic-btn" data-topic="History">History</button>
+        <button class="topic-btn" data-topic="Geography">Geography</button>
+        <button class="topic-btn" data-topic="Science">Science</button>
+
+        <div class="quiz-stats" id="quiz-stats">
+            <div class="stat-row">
+                <span class="stat-label">Progress</span>
+                <span class="stat-value" id="progress-text">0/0</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            <div class="stat-row" style="margin-top: 1rem;">
+                <span class="stat-label">Score</span>
+                <span class="stat-value" id="score-text">0%</span>
+            </div>
+            <div class="stat-row">
+                <span class="score-badge correct" id="correct-count">✓ 0</span>
+                <span class="score-badge incorrect" id="incorrect-count">✗ 0</span>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main">
+        <div style="color: var(--text-secondary);">
+            Start a quiz by choosing a topic or typing your own. The quiz will run in the chat below.
+        </div>
+        <div class="messages" id="messages"></div>
+        <div class="input-row">
+            <input class="topic-input" id="topic-input" placeholder="Type a topic, e.g., DBMS" />
+            <button class="start-btn" id="start-btn">Start Quiz</button>
+        </div>
+    </main>
+</div>
+
+<script>
+    const socket = io();
+    const messages = document.getElementById('messages');
+    const topicInput = document.getElementById('topic-input');
+    const startBtn = document.getElementById('start-btn');
+    const topicButtons = document.querySelectorAll('.topic-btn');
+    const quizStats = document.getElementById('quiz-stats');
+    const progressText = document.getElementById('progress-text');
+    const progressFill = document.getElementById('progress-fill');
+    const scoreText = document.getElementById('score-text');
+    const correctCount = document.getElementById('correct-count');
+    const incorrectCount = document.getElementById('incorrect-count');
+
+    let quizState = {
+        active: false,
+        totalQuestions: 0,
+        currentQuestion: 0,
+        correctAnswers: 0,
+        incorrectAnswers: 0
+    };
+
+    // ────────────────────────────────────────────────
+    //           Rich Text Rendering
+    // ────────────────────────────────────────────────
+    function renderRichText(element, content) {
+        if (!content) {
+            element.textContent = '';
+            return;
+        }
+
+        let html = marked.parse(content, {
+            gfm: true,
+            breaks: true,
+            headerIds: false
+        });
+
+        element.innerHTML = html;
+
+        // Highlight code blocks
+        element.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightElement(block);
+        });
+
+        // Render math with KaTeX
+        renderMathInElement(element, {
+            delimiters: [
+                {left: "$$", right: "$$", display: true},
+                {left: "\\[", right: "\\]", display: true},
+                {left: "$", right: "$", display: false},
+                {left: "\\(", right: "\\)", display: false}
+            ],
+            throwOnError: false,
+            strict: "ignore"
+        });
+    }
+
+    function addMessage(role, content) {
+        const div = document.createElement('div');
+        div.className = `message ${role}`;
+        renderRichText(div, content);
+        messages.appendChild(div);
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    function showTyping() {
+        const typing = document.createElement('div');
+        typing.className = 'message bot typing';
+        typing.innerHTML = '<i class="fas fa-ellipsis-h"></i> Thinking...';
+        messages.appendChild(typing);
+        messages.scrollTop = messages.scrollHeight;
+        return typing;
+    }
+
+    // ────────────────────────────────────────────────
+    //           Quiz Stats & UI
+    // ────────────────────────────────────────────────
+    function updateQuizStats() {
+        if (!quizState.active) return;
+        
+        quizStats.classList.add('active');
+        progressText.textContent = `${quizState.currentQuestion}/${quizState.totalQuestions}`;
+        
+        const progressPercent = quizState.totalQuestions > 0 
+            ? (quizState.currentQuestion / quizState.totalQuestions) * 100 
+            : 0;
+        progressFill.style.width = `${progressPercent}%`;
+        
+        const totalAnswered = quizState.correctAnswers + quizState.incorrectAnswers;
+        const scorePercent = totalAnswered > 0 
+            ? Math.round((quizState.correctAnswers / totalAnswered) * 100) 
+            : 0;
+        scoreText.textContent = `${scorePercent}%`;
+        
+        correctCount.textContent = `✓ ${quizState.correctAnswers}`;
+        incorrectCount.textContent = `✗ ${quizState.incorrectAnswers}`;
+    }
+
+    // ────────────────────────────────────────────────
+    //           Question Parsing & UI
+    // ────────────────────────────────────────────────
+    function parseQuizQuestion(content) {
+        const lines = content.split('\n').filter(l => l.trim());
+        if (lines.length < 3) return null;
+
+        const questionMatch = content.match(/(?:Question \d+:|^\d+\.|\*\*Question\*\*:?)?\s*(.+?)(?=\n[A-D]\))/s);
+        if (!questionMatch) return null;
+
+        const question = questionMatch[1].trim();
+
+        const optionPattern = /([A-D])\)\s*(.+?)(?=\n[A-D]\)|$)/gs;
+        const options = [];
+        let match;
+        while ((match = optionPattern.exec(content)) !== null) {
+            options.push({ letter: match[1], text: match[2].trim() });
+        }
+
+        if (options.length < 2) return null;
+
+        return { question, options };
+    }
+
+    function createQuestionUI(questionData, questionNumber) {
+        const container = document.createElement('div');
+        container.className = 'question-container';
+
+        const header = document.createElement('div');
+        header.className = 'question-header';
+        header.innerHTML = `<i class="fas fa-question-circle"></i> Question ${questionNumber}`;
+
+        const questionText = document.createElement('div');
+        questionText.className = 'question-text';
+        renderRichText(questionText, questionData.question);
+
+        const optionsContainer = document.createElement('div');
+        optionsContainer.className = 'options-container';
+
+        questionData.options.forEach(option => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerHTML = `
+                <span class="option-letter">${option.letter}</span>
+                <span>${option.text}</span>
+            `;
+            btn.onclick = () => handleAnswerSelect(btn, option.letter, container);
+            optionsContainer.appendChild(btn);
+        });
+
+        const feedback = document.createElement('div');
+        feedback.className = 'feedback';
+
+        const explanation = document.createElement('div');
+        explanation.className = 'explanation';
+
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'next-btn';
+        nextBtn.textContent = 'Next Question →';
+        nextBtn.onclick = () => socket.emit('message', { message: 'next' });
+
+        container.append(header, questionText, optionsContainer, feedback, explanation, nextBtn);
+        messages.appendChild(container);
+        messages.scrollTop = messages.scrollHeight;
+
+        quizState.currentQuestion = questionNumber;
+        updateQuizStats();
+
+        return container;
+    }
+
+    function handleAnswerSelect(selectedBtn, selectedLetter, container) {
+        const allButtons = container.querySelectorAll('.option-btn');
+        allButtons.forEach(btn => btn.disabled = true);
+
+        selectedBtn.classList.add('selected');
+        socket.emit('message', { message: selectedLetter });
+    }
+
+    function showAnswerFeedback(container, isCorrect, correctAnswer, explanation) {
+        const allButtons = container.querySelectorAll('.option-btn');
+        const feedback = container.querySelector('.feedback');
+        const explanationBox = container.querySelector('.explanation');
+        const nextBtn = container.querySelector('.next-btn');
+
+        if (isCorrect) {
+            quizState.correctAnswers++;
+            feedback.className = 'feedback correct show';
+            feedback.innerHTML = '<i class="fas fa-check-circle"></i> Correct! Well done!';
+        } else {
+            quizState.incorrectAnswers++;
+            feedback.className = 'feedback incorrect show';
+            feedback.innerHTML = `<i class="fas fa-times-circle"></i> Incorrect. The correct answer is ${correctAnswer}.`;
+        }
+
+        allButtons.forEach(btn => {
+            const letter = btn.querySelector('.option-letter').textContent;
+            if (letter === correctAnswer) {
+                btn.classList.add('correct');
+            } else if (btn.classList.contains('selected') && !isCorrect) {
+                btn.classList.add('incorrect');
+            }
+        });
+
+        if (explanation) {
+            explanationBox.innerHTML = `
+                <div class="explanation-title">
+                    <i class="fas fa-lightbulb"></i> Explanation
+                </div>
+                <div class="explanation-text"></div>
+            `;
+            renderRichText(explanationBox.querySelector('.explanation-text'), explanation);
+            explanationBox.classList.add('show');
+        }
+
+        nextBtn.classList.add('show');
+        updateQuizStats();
+    }
+
+    // ────────────────────────────────────────────────
+    //           Quiz Start & Events
+    // ────────────────────────────────────────────────
+    function sendQuizRequest(topic) {
+        if (!topic.trim()) return;
+
+        addMessage('user', `quiz me on ${topic}`);
+        quizState = {
+            active: true,
+            totalQuestions: 10, // can be updated by server later
+            currentQuestion: 0,
+            correctAnswers: 0,
+            incorrectAnswers: 0
+        };
+        updateQuizStats();
+
+        socket.emit('message', { message: `quiz me on ${topic}` });
+    }
+
+    topicButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const topic = btn.getAttribute('data-topic');
+            sendQuizRequest(topic);
+        });
+    });
+
+    startBtn.addEventListener('click', () => {
+        const topic = topicInput.value.trim();
+        sendQuizRequest(topic);
+        topicInput.value = '';
+    });
+
+    topicInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+            const topic = topicInput.value.trim();
+            sendQuizRequest(topic);
+            topicInput.value = '';
+        }
+    });
+
+    // ────────────────────────────────────────────────
+    //           Socket Events
+    // ────────────────────────────────────────────────
+    socket.on('chat_message', (data) => {
+        if (data.role === 'assistant') {
+            const questionData = parseQuizQuestion(data.content);
+
+            if (questionData && quizState.active) {
+                createQuestionUI(questionData, quizState.currentQuestion + 1);
+            } else {
+                addMessage('bot', data.content);
+            }
+        }
+    });
+
+    socket.on('answer_feedback', (data) => {
+        const lastQuestion = messages.querySelector('.question-container:last-child');
+        if (lastQuestion) {
+            showAnswerFeedback(
+                lastQuestion,
+                data.isCorrect,
+                data.correctAnswer,
+                data.explanation
+            );
+        }
+    });
+
+    socket.on('quiz_complete', (data) => {
+        quizState.active = false;
+        const total = quizState.correctAnswers + quizState.incorrectAnswers;
+        const percent = total > 0 ? Math.round((quizState.correctAnswers / total) * 100) : 0;
+        addMessage('bot', `Quiz completed!\n**Final score:** ${quizState.correctAnswers}/${total} (${percent}%)`);
+    });
+
+    // Optional: typing indicator (if your backend supports it)
+    // socket.on('typing', showTyping);
+</script>
+</body>
+</html>

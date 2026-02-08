@@ -1,0 +1,14 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+instance/
+migrations/
+migrations/__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.log
