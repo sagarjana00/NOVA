@@ -77,7 +77,7 @@ python main.py
 5. Open in browser → http://127.0.0.1:5000
 
 
-## Project Status (Jan 2026)
+## Project Status (Feb 2026)
 
 - Basic routing + chat working
 - Nice dark UI with hover controls
