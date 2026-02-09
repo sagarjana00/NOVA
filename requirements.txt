@@ -16,3 +16,5 @@ psycopg[binary,pool]
 Authlib>=1.3.0
 requests
 gunicorn
+eventlet>=0.33.0
+gevent>=24.2.1 
